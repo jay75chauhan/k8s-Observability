@@ -1,0 +1,470 @@
+# ============================================================
+# OBSERVABILITY STACK — FINAL UNIVERSAL CONFIG
+# ============================================================
+
+namespace:
+  name: observability
+
+# ============================================================
+# GLOBAL SETTINGS (only affects components that don't override it)
+# ============================================================
+global:
+  nodeSelector: {}
+  tolerations:
+    - operator: "Exists"
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+              - key: intent
+                operator: In
+                values: ["observability"]
+
+# ============================================================
+# GRAFANA
+# ============================================================
+grafana:
+  enabled: true
+  adminUser: admin
+  adminPassword: admin
+
+  service:
+    type: ClusterIP
+    port: 80
+
+  ingress:
+    enabled: true
+    ingressClassName: aws-alb
+    annotations:
+      kubernetes.io/ingress.class: aws-alb
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+      # alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:6:certificate/a302cf3a-9f-d6ac33967545
+      alb.ingress.kubernetes.io/group.name: apps
+      alb.ingress.kubernetes.io/ssl-redirect: "443"
+    hosts:
+      - domian.com
+    path: /
+    pathType: Prefix
+    tls:
+      - hosts: [domian.com]
+  plugins:
+    - grafana-exploretraces-app
+
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          url: http://observability-kube-prometh-prometheus.observability.svc.cluster.local:9090
+          access: proxy
+          isDefault: true
+          uid: prometheus
+        - name: Loki
+          type: loki
+          url: http://observability-loki.observability.svc.cluster.local:3100
+          access: proxy
+          uid: loki
+        - name: Tempo
+          type: tempo
+          url: http://observability-tempo.observability.svc.cluster.local:3200
+          access: proxy
+          uid: tempo
+          jsonData:
+            httpMethod: GET
+            serviceMap:
+              datasourceUid: prometheus
+            tracesToMetrics:
+              datasourceUid: prometheus
+            tracesToLogs:
+              datasourceUid: "Loki"
+              filterByTraceID: true
+              mapTagNamesEnabled: true
+
+  persistence:
+    enabled: true
+    storageClassName: gp3
+    accessModes:
+      - ReadWriteOnce
+    size: 5Gi
+
+  nodeSelector:
+    intent: observability
+  tolerations:
+    - key: "observability"
+      operator: "Equal"
+      value: "true"
+      effect: "NoSchedule"
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: 300m
+      memory: 1Gi
+
+    # ============================================================
+  # GRAFANA DASHBOARDS — AUTO-PROVISIONED
+  # ============================================================
+
+  # # Enable dashboard provisioning
+  # dashboardProviders:
+  #   dashboardproviders.yaml:
+  #     apiVersion: 1
+  #     providers:
+  #       - name: default
+  #         orgId: 1
+  #         folder: ""
+  #         type: file
+  #         disableDeletion: false
+  #         editable: true
+  #         options:
+  #           path: /var/lib/grafana/dashboards/default
+
+  # dashboards:
+  #   default:
+  #     # Kubernetes cluster dashboard
+  #     k8s-dashboard:
+  #       gnetId: 15661
+  #       revision: 1
+  #       datasource: Prometheus
+
+  #     # Node exporter metrics
+  #     node-exporter:
+  #       gnetId: 1860
+  #       revision: 37
+  #       datasource: Prometheus
+
+  #     # Loki logs dashboard
+  #     loki-logs:
+  #       gnetId: 16976
+  #       revision: 1
+  #       datasource: Loki
+
+  #     # ArgoCD dashboard
+  #     argocd:
+  #       gnetId: 14584
+  #       revision: 1
+
+# ============================================================
+# PROMETHEUS STACK
+# ============================================================
+kube-prometheus-stack:
+  grafana:
+    enabled: false
+
+  prometheus:
+    prometheusSpec:
+      enableRemoteWriteReceiver: true
+      enableFeatures:
+        - exemplar-storage
+        - native-histograms
+      podMonitorSelector: {}
+      podMonitorNamespaceSelector: {}
+      serviceMonitorSelector: {}
+      serviceMonitorNamespaceSelector: {}
+      retention: 168h # 7 days — good balance for dev/small cluster
+      retentionSize: 8GiB # hard limit: delete oldest if exceeds
+      scrapeInterval: 30s
+      evaluationInterval: 30s
+      resources:
+        requests:
+          cpu: 300m
+          memory: 1Gi
+        limits:
+          cpu: 800m
+          memory: 1.5Gi
+      nodeSelector:
+        intent: observability
+      tolerations:
+        - key: "observability"
+          operator: "Equal"
+          value: "true"
+          effect: "NoSchedule"
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: intent
+                    operator: In
+                    values: ["observability"]
+      remoteWrite:
+        - url: "http://observability-alloy.observability.svc.cluster.local:9080/api/v1/prom/receive"
+
+  alertmanager:
+    alertmanagerSpec:
+      nodeSelector:
+        intent: observability
+      tolerations:
+        - key: "observability"
+          operator: "Equal"
+          value: "true"
+          effect: "NoSchedule"
+
+  nodeExporter:
+    nodeSelector: {}
+    tolerations:
+      - operator: Exists
+    affinity: {}
+    hostNetwork: true
+    hostPID: true
+
+  kube-state-metrics:
+    nodeSelector: {}
+    affinity: {}
+    tolerations:
+      - operator: Exists
+
+# ============================================================
+# LOKI — SingleBinary Mode + Filesystem Storage
+# ============================================================
+loki:
+  loki:
+    commonConfig:
+      replication_factor: 1
+    storage:
+      type: "filesystem"
+      bucketNames:
+        chunks: chunks
+        ruler: ruler
+        admin: admin
+    schemaConfig:
+      configs:
+        - from: "2024-04-01"
+          store: tsdb
+          object_store: filesystem
+          schema: v13
+          index:
+            prefix: loki_index_
+            period: 24h
+    storage_config:
+      filesystem:
+        directory: /tmp/loki/chunks
+    pattern_ingester:
+      enabled: true
+    limits_config:
+      allow_structured_metadata: true
+      volume_enabled: true
+      retention_period: 168h # Global: 7 days
+      retention_stream: # Per-stream overrides (higher priority)
+        - selector: '{namespace=~".+"}' # matches any non-empty namespace
+          period: 336h # 14 days
+        - selector: '{namespace=~"(kube-system|observability)"}' # System/noisy
+          period: 72h # 3 days
+    ruler:
+      enable_api: true
+    auth_enabled: false
+
+  compactor:
+    enabled: true
+    working_directory: /data/loki/compactor
+    shared_store: filesystem
+    compaction_interval: 10m
+    retention_enabled: true
+    retention_delete_delay: 2h # Grace period before actual delete
+    delete_request_store: filesystem
+    delete_request_cancel_period: 1h
+
+  minio:
+    enabled: false
+
+  deploymentMode: SingleBinary
+
+  singleBinary:
+    replicas: 1
+    persistence:
+      enabled: true
+      storageClass: gp3
+      accessModes:
+        - ReadWriteOnce
+      size: 20Gi
+    nodeSelector:
+      intent: observability
+    tolerations:
+      - key: "observability"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
+    resources:
+      requests:
+        cpu: "1"
+        memory: "2Gi"
+      limits:
+        cpu: "2"
+        memory: "4Gi"
+
+  backend:
+    replicas: 0
+  read:
+    replicas: 0
+  write:
+    replicas: 0
+
+  chunksCache:
+    allocatedMemory: 500
+
+# ============================================================
+# TEMPO
+# ============================================================
+tempo:
+  tempo:
+    tag: main-814c1c6
+    metricsGenerator:
+      enabled: true
+      remoteWriteUrl: "http://observability-kube-prometh-prometheus.observability.svc.cluster.local:9090/api/v1/write"
+    overrides:
+      defaults:
+        metrics_generator:
+          processors: [service-graphs, span-metrics, local-blocks]
+
+    # Explicitly schedule on observability nodes
+    nodeSelector:
+      intent: observability
+    tolerations:
+      - key: "observability"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
+    affinity: {} # clears global preferred affinity if needed
+
+    persistence:
+      enabled: true
+      storageClass: gp3
+      size: 10Gi
+      accessModes:
+        - ReadWriteOnce
+
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 400m
+        memory: 1Gi
+
+# ============================================================
+# ALLOY
+# ============================================================
+alloy:
+  alloy:
+    configMap:
+      content: |-
+        logging {
+          level = "info"
+          format = "logfmt"
+        }
+        discovery.kubernetes "pods" {
+          role = "pod"
+        }
+        discovery.relabel "pods" {
+          targets = discovery.kubernetes.pods.targets
+
+          rule {
+            source_labels = ["__meta_kubernetes_namespace"]
+            target_label = "namespace"
+            action = "replace"
+          }
+          rule {
+            source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+            target_label = "app"
+            action = "replace"
+          }
+          rule {
+            source_labels = ["__meta_kubernetes_pod_container_name"]
+            target_label = "container"
+            action = "replace"
+          }
+          rule {
+            source_labels = ["__meta_kubernetes_pod_name"]
+            target_label = "pod"
+            action = "replace"
+          }
+        }
+        loki.source.kubernetes "pods" {
+          targets    = discovery.relabel.pods.output
+          forward_to = [loki.process.process.receiver]
+        }
+        loki.process "process" {
+          forward_to = [loki.write.loki.receiver]
+
+          stage.drop {
+            older_than          = "1h"
+            drop_counter_reason = "too old"
+          }
+          stage.match { 
+            selector = "{instance=~\".*\"}"
+            stage.json {
+              expressions = {
+                level = "\"level\"",
+              }
+            }
+            stage.labels {
+              values = { 
+                level = "level",
+              }
+            }
+          }
+          stage.label_drop {
+            values = [ "service_name" ]
+          }
+        }
+        loki.write "loki" {
+          endpoint {
+            url = "http://observability-loki.observability.svc.cluster.local:3100/loki/api/v1/push"
+          }
+        }
+        otelcol.receiver.otlp "otlp_receiver" {
+          grpc {
+            endpoint = "0.0.0.0:4317"
+          }
+          http {
+            endpoint = "0.0.0.0:4318"
+          }
+          output {
+            traces = [otelcol.exporter.otlp.tempo.input]
+          }
+        }
+        otelcol.exporter.otlp "tempo" {
+          client {
+            endpoint = "observability-tempo.observability.svc.cluster.local:4317"
+            tls {
+              insecure = true
+            }
+          }
+        }
+
+    extraPorts:
+      - name: otlp-grpc
+        port: 4317
+        targetPort: 4317
+        protocol: TCP
+      - name: otlp-http
+        port: 4318
+        targetPort: 4318
+        protocol: TCP
+
+    mounts:
+      varlog: true
+      containerd: true
+      dockercontainers: true
+
+    # Run on ALL nodes
+    nodeSelector: {}
+    tolerations:
+      - operator: Exists
+    affinity: {}
+
+    resources:
+      limits:
+        cpu: 200m
+        memory: 128Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi

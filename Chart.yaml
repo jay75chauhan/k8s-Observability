@@ -1,0 +1,28 @@
+apiVersion: v2
+name: observability
+description: Full observability stack — ALL in observability namespace + intent=observability
+type: application
+version: 1.0.0
+appVersion: "1.0"
+dependencies:
+  - name: kube-prometheus-stack
+    version: "80.0.0"
+    repository: "file://charts/kube-prometheus-stack-80.0.0.tgz"
+  - name: loki
+    version: "6.46.0"
+    repository: "file://charts/loki-6.46.0.tgz"
+  - name: tempo
+    version: "1.24.0"
+    repository: "file://charts/tempo-1.24.0.tgz"
+  - name: grafana
+    version: "10.2.0"
+    repository: "file://charts/grafana-10.2.0.tgz"
+  - name: alloy
+    version: "1.4.0"
+    repository: "file://charts/alloy-1.4.0.tgz"
+# For Grafana dashboards, see:
+# https://grafana.com/grafana/dashboards/15661-k8s-dashboard-en-20250125/
+# https://grafana.com/grafana/dashboards/1860-node-exporter-full/
+# https://grafana.com/grafana/dashboards/16976-kubernetes-loki-logs/
+# https://grafana.com/grafana/dashboards/14584-argocd/
+#https://grafana.com/grafana/dashboards/24626-strimzi-kafka-dashboard-with-jvm-metrics/
