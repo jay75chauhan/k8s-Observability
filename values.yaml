@@ -8,19 +8,19 @@ namespace:
 # ============================================================
 # GLOBAL SETTINGS (only affects components that don't override it)
 # ============================================================
-global:
-  nodeSelector: {}
-  tolerations:
-    - operator: "Exists"
-  affinity:
-    nodeAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-        - weight: 100
-          preference:
-            matchExpressions:
-              - key: intent
-                operator: In
-                values: ["observability"]
+# global:
+#   nodeSelector: {}
+#   tolerations:
+#     - operator: "Exists"
+#   affinity:
+#     nodeAffinity:
+#       preferredDuringSchedulingIgnoredDuringExecution:
+#         - weight: 100
+#           preference:
+#             matchExpressions:
+#               - key: intent
+#                 operator: In
+#                 values: ["observability"]
 
 # ============================================================
 # GRAFANA
@@ -92,13 +92,13 @@ grafana:
       - ReadWriteOnce
     size: 5Gi
 
-  nodeSelector:
-    intent: observability
-  tolerations:
-    - key: "observability"
-      operator: "Equal"
-      value: "true"
-      effect: "NoSchedule"
+  # nodeSelector:
+  #   intent: observability
+  # tolerations:
+  #   - key: "observability"
+  #     operator: "Equal"
+  #     value: "true"
+  #     effect: "NoSchedule"
 
   resources:
     requests:
@@ -179,34 +179,34 @@ kube-prometheus-stack:
         limits:
           cpu: 800m
           memory: 1.5Gi
-      nodeSelector:
-        intent: observability
-      tolerations:
-        - key: "observability"
-          operator: "Equal"
-          value: "true"
-          effect: "NoSchedule"
-      affinity:
-        nodeAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 100
-              preference:
-                matchExpressions:
-                  - key: intent
-                    operator: In
-                    values: ["observability"]
+      # nodeSelector:
+      #   intent: observability
+      # tolerations:
+      #   - key: "observability"
+      #     operator: "Equal"
+      #     value: "true"
+      #     effect: "NoSchedule"
+      # affinity:
+      #   nodeAffinity:
+      #     preferredDuringSchedulingIgnoredDuringExecution:
+      #       - weight: 100
+      #         preference:
+      #           matchExpressions:
+      #             - key: intent
+      #               operator: In
+      #               values: ["observability"]
       remoteWrite:
         - url: "http://observability-alloy.observability.svc.cluster.local:9080/api/v1/prom/receive"
 
   alertmanager:
     alertmanagerSpec:
-      nodeSelector:
-        intent: observability
-      tolerations:
-        - key: "observability"
-          operator: "Equal"
-          value: "true"
-          effect: "NoSchedule"
+      # nodeSelector:
+      #   intent: observability
+      # tolerations:
+      #   - key: "observability"
+      #     operator: "Equal"
+      #     value: "true"
+      #     effect: "NoSchedule"
 
   nodeExporter:
     nodeSelector: {}
@@ -285,13 +285,13 @@ loki:
       accessModes:
         - ReadWriteOnce
       size: 20Gi
-    nodeSelector:
-      intent: observability
-    tolerations:
-      - key: "observability"
-        operator: "Equal"
-        value: "true"
-        effect: "NoSchedule"
+    # nodeSelector:
+    #   intent: observability
+    # tolerations:
+    #   - key: "observability"
+    #     operator: "Equal"
+    #     value: "true"
+    #     effect: "NoSchedule"
     resources:
       requests:
         cpu: "1"
@@ -325,14 +325,14 @@ tempo:
           processors: [service-graphs, span-metrics, local-blocks]
 
     # Explicitly schedule on observability nodes
-    nodeSelector:
-      intent: observability
-    tolerations:
-      - key: "observability"
-        operator: "Equal"
-        value: "true"
-        effect: "NoSchedule"
-    affinity: {} # clears global preferred affinity if needed
+    # nodeSelector:
+    #   intent: observability
+    # tolerations:
+    #   - key: "observability"
+    #     operator: "Equal"
+    #     value: "true"
+    #     effect: "NoSchedule"
+    # affinity: {} # clears global preferred affinity if needed
 
     persistence:
       enabled: true
