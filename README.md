@@ -1,4 +1,5 @@
 # k8s-Observability Helm Chart
+<img width="1408" height="768" alt="Image" src="https://github.com/user-attachments/assets/283d1dd9-eeaa-41b9-99e1-1363acc8f967" />
 
 A comprehensive, production-ready Helm chart for deploying a complete observability stack on Kubernetes. This chart bundles **metrics collection**, **distributed tracing**, **log aggregation**, and **visualization** into a single, extensible package.
 
@@ -47,65 +48,7 @@ This chart is intentionally modular—each component can be enabled, disabled, o
 
 ## Architecture
 
-```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                     Kubernetes Observability Architecture                    │
-├──────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│                   ┌───────────────────────────────┐                          │
-│                   │        Application Pods       │                          │
-│                   │    (Containers / Services)    │                          │
-│                   └───────────────┬───────────────┘                          │
-│                                   │                                          │
-│                       ┌───────────┼───────────┬───────────┐                  │
-│                       │           │           │           │                  │
-│                    Metrics        Logs       Traces     Events               │
-│                       │           │           │                              │
-│                       ▼           ▼           ▼                              │
-│                                                                              │
-│      ┌──────────────────────────── COLLECTION LAYER ──────────────────────┐  │
-│      │                                                                    │  │
-│      │   ┌─────────────┐   ┌───────────────┐   ┌─────────────────┐        │  │
-│      │   │ Prometheus  │   │ Alloy Agent   │   │ OTLP Receiver   │        │  │
-│      │   │  (Metrics)  │   │    (Logs)     │   │    (Traces)     │        │  │
-│      │   └──────┬──────┘   └──────┬────────┘   └────────┬────────┘        │  │
-│      │          │                 │                     │                 │  │
-│      └──────────┴─────────────────┴─────────────┬───────┴─────────────────┘  │
-│                                                 ▼                            │
-│                                                                              │
-│         ┌────────────────── PROCESSING / PIPELINE LAYER ──────────────────┐  │
-│         │                                                                 │  │
-│         │                         Grafana Alloy                           │  │
-│         │               (Aggregation & Processing Engine)                 │  │
-│         │                                                                 │  │
-│         │              • Metrics Pipeline                                 │  │
-│         │              • Logs Pipeline                                    │  │
-│         │              • Traces Pipeline                                  │  │
-│         │                                                                 │  │
-│         └───────────────┬──────────────────┬──────────────────────────────┘  │
-│                         │                  │                                 │
-│                         ▼                  ▼                                 │
-│                                                                              │
-│        ┌──────────────────────────── STORAGE LAYER ──────────────────────┐   │
-│        │                                                                 │   │
-│        │     ┌────────────┐   ┌──────────────┐   ┌───────────┐           │   │
-│        │     │    Loki    │   │  Prometheus  │   │   Tempo   │           │   │
-│        │     │   (Logs)   │   │  (Metrics)   │   │  (Traces) │           │   │
-│        │     └──────┬─────┘   └──────┬───────┘   └─────┬─────┘           │   │
-│        │            │                │                 │                 │   │
-│        └────────────┴──────────┬─────┴───────────┬─────┴─────────────────┘   │
-│                                ▼                 ▼                           │
-│                                                                              │
-│                     ┌────────── VISUALIZATION LAYER ──────────┐              │
-│                     │                                         │              │
-│                     │                Grafana                  │              │
-│                     │     Dashboards • Logs • Metrics         │              │
-│                     │              • Traces UI                │              │
-│                     │                                         │              │
-│                     └─────────────────────────────────────────┘              │
-│                                                                              │
-└──────────────────────────────────────────────────────────────────────────────┘
-```
+<img width="786" height="759" alt="Image" src="https://github.com/user-attachments/assets/7cbbcb21-b355-4b10-94c6-9690a6a3d19f" />
 
 ---
 
